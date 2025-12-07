@@ -1,0 +1,312 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Responsive Design Utilities */
+@layer utilities {
+  /* Mobile-first spacing */
+  .mobile-padding {
+    @apply px-4 py-3;
+  }
+  
+  .tablet-padding {
+    @apply md:px-6 md:py-4;
+  }
+  
+  .desktop-padding {
+    @apply lg:px-8 lg:py-6;
+  }
+
+  /* Responsive text sizes */
+  .mobile-text {
+    @apply text-sm;
+  }
+  
+  .tablet-text {
+    @apply md:text-base;
+  }
+  
+  .desktop-text {
+    @apply lg:text-lg;
+  }
+
+  /* Responsive grid columns */
+  .mobile-grid {
+    @apply grid grid-cols-1 gap-4;
+  }
+  
+  .tablet-grid {
+    @apply md:grid-cols-2 md:gap-6;
+  }
+  
+  .desktop-grid {
+    @apply lg:grid-cols-3 lg:gap-8;
+  }
+
+  /* Safe area support for mobile */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Touch-friendly buttons for mobile */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Mobile-optimized cards */
+  .mobile-card {
+    @apply rounded-xl p-4;
+  }
+  
+  .tablet-card {
+    @apply md:rounded-2xl md:p-6;
+  }
+  
+  .desktop-card {
+    @apply lg:rounded-3xl lg:p-8;
+  }
+}
+
+:root {
+  --navy-1100: #010712;
+  --navy-1000: #020c1a;
+  --navy-900: #02122b;
+  --navy-800: #05102b;
+  --sky-glow: radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.18), transparent 50%);
+  --cyan-glow: radial-gradient(circle at 80% 15%, rgba(5, 211, 252, 0.14), transparent 55%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  /* Ensure proper scaling */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--navy-1000);
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Mobile optimizations */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* Prevent text size adjustment on iOS */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  /* Safe area support */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.page-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  background: linear-gradient(135deg, #031735 0%, #020c1a 45%, #010712 100%);
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Safe area support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.page-shell::before,
+.page-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.page-shell::before {
+  background: var(--sky-glow);
+}
+
+.page-shell::after {
+  background: var(--cyan-glow);
+}
+
+.page-shell.theme-alt::before {
+  background: radial-gradient(circle at 25% 25%, rgba(236, 72, 153, 0.18), transparent 55%);
+}
+
+.page-shell.theme-alt::after {
+  background: radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.18), transparent 60%);
+}
+
+.glass-panel {
+  background: rgba(7, 20, 49, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 25px 60px rgba(3, 8, 20, 0.65);
+  backdrop-filter: blur(24px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(3, 8, 20, 0.4);
+}
+
+.gradient-badge {
+  background: linear-gradient(90deg, #0ea5e9, #2563eb);
+  box-shadow: 0 10px 30px rgba(5, 150, 255, 0.35);
+}
+
+.status-pill {
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.4), 0 0 40px rgba(250, 204, 21, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(250, 204, 21, 0.6), 0 0 60px rgba(250, 204, 21, 0.3);
+  }
+}
+
+@layer base {
+  .theme-surface {
+    color: #f1f5ff;
+  }
+
+  .theme-surface .bg-white,
+  .theme-surface .bg-gray-50,
+  .theme-surface .bg-gray-100 {
+    background-color: rgba(7, 20, 49, 0.95);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #f8fbff;
+  }
+
+  .theme-surface .bg-gray-200 {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .theme-surface .bg-gray-900,
+  .theme-surface .bg-gray-800,
+  .theme-surface .bg-gray-700 {
+    background-color: rgba(5, 12, 30, 0.95);
+  }
+
+  .theme-surface .bg-slate-900,
+  .theme-surface .bg-slate-800,
+  .theme-surface .bg-slate-700 {
+    background-color: rgba(5, 13, 32, 0.92);
+  }
+
+  .theme-surface .bg-navy-900,
+  .theme-surface .bg-navy-800,
+  .theme-surface .bg-navy-700 {
+    background-color: rgba(3, 10, 27, 0.95);
+  }
+
+  .theme-surface .border-gray-200,
+  .theme-surface .border-gray-300 {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .theme-surface .text-gray-900,
+  .theme-surface .text-gray-800,
+  .theme-surface .text-gray-700 {
+    color: #f8fbff;
+  }
+
+  .theme-surface .text-gray-600,
+  .theme-surface .text-gray-500 {
+    color: #d2dbff;
+  }
+
+  .theme-surface .text-gray-400,
+  .theme-surface .text-gray-300 {
+    color: #aeb7d9;
+  }
+
+  .theme-surface .text-slate-500,
+  .theme-surface .text-slate-400,
+  .theme-surface .text-slate-300 {
+    color: #aeb7d9;
+  }
+
+  .theme-surface .text-navy-600,
+  .theme-surface .text-navy-500,
+  .theme-surface .text-navy-400 {
+    color: #c7d7ff;
+  }
+
+  .theme-surface .bg-gray-50 {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .theme-surface .shadow-sm {
+    box-shadow: 0 20px 40px rgba(3, 10, 24, 0.45) !important;
+  }
+}
+
+/* Root container fixes for consistent mobile rendering */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+  /* Safe area support */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent layout shifts and ensure consistent rendering */
+img, video, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure all containers respect viewport */
+.container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl, .max-w-3xl, .max-w-2xl {
+  width: 100%;
+  max-width: 100%;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Fix for text rendering consistency */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
