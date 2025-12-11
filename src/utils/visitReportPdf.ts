@@ -38,13 +38,32 @@ export interface VisitForPdf {
 
 async function toDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    // Skip video files - they can't be displayed as images in PDF
+    if (url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.mov') || url.toLowerCase().includes('.webm')) {
+      return null;
+    }
+
+    // Add CORS mode for Supabase URLs
+    const res = await fetch(url, { mode: 'cors', cache: 'no-cache' });
+    if (!res.ok) {
+      console.warn('Failed to fetch image:', res.status, url);
+      return null;
+    }
     const blob = await res.blob();
+    
+    // Check if it's actually an image
+    if (!blob.type.startsWith('image/')) {
+      console.warn('URL is not an image:', blob.type, url);
+      return null;
+    }
+
     return await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
+      reader.onerror = () => {
+        console.warn('FileReader error for:', url);
+        reject(reader.error);
+      };
       reader.readAsDataURL(blob);
     });
   } catch (e) {
@@ -96,18 +115,18 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
 
     doc.setTextColor(theme.muted);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(title.toUpperCase(), x + 14, y + 18);
+    doc.setFontSize(8);
+    doc.text(title.toUpperCase(), x + 14, y + 16);
 
     doc.setTextColor(theme.text);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     const body = Array.isArray(lines) ? lines.join('\n') : lines;
     const wrapped = doc.splitTextToSize(body || '—', width - 28);
-    let textY = y + 36;
+    let textY = y + 30;
     wrapped.forEach(line => {
       doc.text(line, x + 14, textY);
-      textY += 14;
+      textY += 12;
     });
 
     const heightUsed = Math.max(minHeight, (wrapped.length > 0 ? textY - y + 6 : minHeight));
@@ -117,11 +136,11 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
   const drawChip = (label: string, color: string, x: number, yPos: number) => {
     doc.setFillColor(color);
     doc.setTextColor('#0b1220');
-    doc.setFontSize(10);
-    const padding = 6;
+    doc.setFontSize(8);
+    const padding = 5;
     const textWidth = doc.getTextWidth(label);
     const chipWidth = textWidth + padding * 2;
-    doc.roundedRect(x, yPos - 12, chipWidth, 18, 6, 6, 'F');
+    doc.roundedRect(x, yPos - 10, chipWidth, 16, 5, 5, 'F');
     doc.text(label, x + padding, yPos);
   };
 
@@ -129,9 +148,9 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
     ensureSpace(30);
     doc.setTextColor(theme.text);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(11);
     doc.text(title.toUpperCase(), margin, y);
-    y += 16;
+    y += 14;
   };
 
   const addListBadges = (
@@ -148,23 +167,24 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
 
       doc.setTextColor(theme.text);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(item.title, margin + cardPadding, y + 18);
+      doc.setFontSize(9);
+      doc.text(item.title, margin + cardPadding, y + 16);
 
       if (item.subtitle) {
         doc.setTextColor(theme.muted);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text(item.subtitle, margin + cardPadding, y + 34);
+        doc.setFontSize(8);
+        doc.text(item.subtitle, margin + cardPadding, y + 30);
       }
 
       if (item.status) {
         const chipColor = colorByStatus ? colorByStatus(item.status) : theme.accent;
         const statusLabel = item.status.toUpperCase();
-        const textWidth = doc.getTextWidth(statusLabel) + 12;
-        drawChip(statusLabel, chipColor, margin + cardWidth - textWidth - 10, y + 24);
+        doc.setFontSize(8);
+        const textWidth = doc.getTextWidth(statusLabel) + 10;
+        drawChip(statusLabel, chipColor, margin + cardWidth - textWidth - 8, y + 20);
       }
-      y += 56;
+      y += 48;
     });
     y += 4;
   };
@@ -186,27 +206,28 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
 
   // Header row
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.text(`Visit #${visit.visit_number}`, margin, y + 6);
-  doc.setFontSize(12);
+  doc.setFontSize(9);
   doc.setTextColor(theme.muted);
-  doc.text(visit.customer_name ? visit.customer_name : 'Customer', margin, y + 24);
+  doc.text(visit.customer_name ? visit.customer_name : 'Customer', margin, y + 20);
   if (visit.customer_email) {
-    doc.text(visit.customer_email, margin, y + 38);
+    doc.text(visit.customer_email, margin, y + 32);
   }
 
   // Status chip and completion info
   const statusLabel = visit.status ? visit.status.toUpperCase().replace(/_/g, ' ') : 'STATUS';
-  drawChip(statusLabel, statusColor(statusLabel), pageWidth - margin - 110, y + 10);
+  drawChip(statusLabel, statusColor(statusLabel), pageWidth - margin - 100, y + 8);
   doc.setTextColor(theme.muted);
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
   doc.text(
     `Completed: ${visit.completed_at ? new Date(visit.completed_at).toLocaleString() : '—'}`,
-    pageWidth - margin - 110,
-    y + 28,
-    { align: 'right', maxWidth: 100 }
+    pageWidth - margin - 100,
+    y + 24,
+    { align: 'right', maxWidth: 90 }
   );
-  y += 46;
+  y += 40;
 
   // Tech & Location cards side by side
   const half = (contentWidth - 12) / 2;
@@ -308,39 +329,77 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
   // Photos
   addSectionTitle('Evidence Photos & Videos');
   if (visit.photos && visit.photos.length > 0) {
-    const thumbSize = 90;
-    const gap = 12;
+    const thumbSize = 80;
+    const gap = 10;
     const perRow = Math.max(1, Math.floor(contentWidth / (thumbSize + gap)));
     for (let i = 0; i < visit.photos.length; i++) {
-      ensureSpace(thumbSize + 40);
+      ensureSpace(thumbSize + 50);
       const photo = visit.photos[i];
       const col = i % perRow;
       const row = Math.floor(i / perRow);
       const x = margin + col * (thumbSize + gap);
-      const rowY = y + row * (thumbSize + 40);
+      const rowY = y + row * (thumbSize + 50);
 
       // Card
       doc.setFillColor(theme.panelAlt);
       doc.setDrawColor(theme.border);
-      doc.roundedRect(x, rowY, thumbSize, thumbSize + 26, 8, 8, 'FD');
+      const cardHeight = thumbSize + 30;
+      doc.roundedRect(x, rowY, thumbSize, cardHeight, 8, 8, 'FD');
 
-      const dataUrl = await toDataUrl(photo.photo_url);
-      if (dataUrl) {
-        doc.addImage(dataUrl, 'JPEG', x + 6, rowY + 6, thumbSize - 12, thumbSize - 12);
+      const isVideo = photo.photo_url.toLowerCase().includes('.mp4') || 
+                      photo.photo_url.toLowerCase().includes('.mov') || 
+                      photo.photo_url.toLowerCase().includes('.webm');
+
+      if (isVideo) {
+        // Draw video placeholder
+        doc.setFillColor(theme.panel);
+        doc.roundedRect(x + 4, rowY + 4, thumbSize - 8, thumbSize - 8, 4, 4, 'F');
+        doc.setTextColor(theme.muted);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        const videoText = 'VIDEO';
+        const textWidth = doc.getTextWidth(videoText);
+        doc.text(videoText, x + (thumbSize - textWidth) / 2, rowY + thumbSize / 2 - 4);
+      } else {
+        // Try to load and display image
+        const dataUrl = await toDataUrl(photo.photo_url);
+        if (dataUrl) {
+          try {
+            // Determine image format from data URL
+            let format = 'JPEG';
+            if (dataUrl.startsWith('data:image/png')) format = 'PNG';
+            else if (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')) format = 'JPEG';
+            else if (dataUrl.startsWith('data:image/webp')) format = 'WEBP';
+            
+            doc.addImage(dataUrl, format, x + 4, rowY + 4, thumbSize - 8, thumbSize - 8);
+          } catch (imgError) {
+            console.warn('Error adding image to PDF:', imgError);
+            // Draw placeholder on error
+            doc.setFillColor(theme.panel);
+            doc.roundedRect(x + 4, rowY + 4, thumbSize - 8, thumbSize - 8, 4, 4, 'F');
+          }
+        } else {
+          // Draw placeholder if image failed to load
+          doc.setFillColor(theme.panel);
+          doc.roundedRect(x + 4, rowY + 4, thumbSize - 8, thumbSize - 8, 4, 4, 'F');
+        }
       }
 
+      // Caption
       doc.setTextColor(theme.text);
-      doc.setFontSize(9);
-      doc.text((photo.caption || 'Evidence').substring(0, 30), x + 8, rowY + thumbSize + 14, {
-        maxWidth: thumbSize - 16
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      const caption = (photo.caption || (isVideo ? 'Video' : 'Photo')).substring(0, 25);
+      doc.text(caption, x + 6, rowY + thumbSize + 12, {
+        maxWidth: thumbSize - 12
       });
 
       if ((i + 1) % perRow === 0) {
-        y = rowY + thumbSize + 32;
+        y = rowY + cardHeight + 8;
       }
     }
     const rows = Math.ceil((visit.photos.length || 1) / perRow);
-    y += rows * (thumbSize + 40);
+    y += rows * (thumbSize + 50);
   } else {
     drawCard(margin, contentWidth, 'Photos', 'No evidence photos or videos uploaded for this visit.', 60);
   }
