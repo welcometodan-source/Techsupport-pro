@@ -107,30 +107,30 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
     }
   };
 
-  const drawCard = (x: number, width: number, title: string, lines: string | string[], minHeight = 60) => {
+  const drawCard = (x: number, width: number, title: string, lines: string | string[], minHeight = 50) => {
     const startY = y;
     doc.setFillColor(theme.panel);
     doc.setDrawColor(theme.border);
-    doc.roundedRect(x, y, width, minHeight, 8, 8, 'FD');
+    doc.roundedRect(x, y, width, minHeight, 6, 6, 'FD');
 
     doc.setTextColor(theme.muted);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.text(title.toUpperCase(), x + 14, y + 16);
+    doc.text(title.toUpperCase(), x + 10, y + 14);
 
     doc.setTextColor(theme.text);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     const body = Array.isArray(lines) ? lines.join('\n') : lines;
-    const wrapped = doc.splitTextToSize(body || '—', width - 28);
-    let textY = y + 30;
+    const wrapped = doc.splitTextToSize(body || '—', width - 20);
+    let textY = y + 26;
     wrapped.forEach(line => {
-      doc.text(line, x + 14, textY);
-      textY += 12;
+      doc.text(line, x + 10, textY);
+      textY += 11;
     });
 
-    const heightUsed = Math.max(minHeight, (wrapped.length > 0 ? textY - y + 6 : minHeight));
-    y = startY + heightUsed + 12;
+    const heightUsed = Math.max(minHeight, (wrapped.length > 0 ? textY - y + 4 : minHeight));
+    y = startY + heightUsed + 8;
   };
 
   const drawChip = (label: string, color: string, x: number, yPos: number) => {
@@ -157,24 +157,25 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
     items: Array<{ title: string; subtitle?: string; status?: string }>,
     colorByStatus?: (status?: string) => string
   ) => {
-    const cardPadding = 14;
+    const cardPadding = 10;
     const cardWidth = contentWidth;
+    const cardHeight = 32;
     items.forEach(item => {
-      ensureSpace(60);
+      ensureSpace(40);
       doc.setFillColor(theme.panelAlt);
       doc.setDrawColor(theme.border);
-      doc.roundedRect(margin, y, cardWidth, 46, 8, 8, 'FD');
+      doc.roundedRect(margin, y, cardWidth, cardHeight, 6, 6, 'FD');
 
       doc.setTextColor(theme.text);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      doc.text(item.title, margin + cardPadding, y + 16);
+      doc.text(item.title, margin + cardPadding, y + 12);
 
       if (item.subtitle) {
         doc.setTextColor(theme.muted);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text(item.subtitle, margin + cardPadding, y + 30);
+        doc.setFontSize(7);
+        doc.text(item.subtitle, margin + cardPadding, y + 24);
       }
 
       if (item.status) {
@@ -182,11 +183,11 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
         const statusLabel = item.status.toUpperCase();
         doc.setFontSize(8);
         const textWidth = doc.getTextWidth(statusLabel) + 10;
-        drawChip(statusLabel, chipColor, margin + cardWidth - textWidth - 8, y + 20);
+        drawChip(statusLabel, chipColor, margin + cardWidth - textWidth - 8, y + 16);
       }
-      y += 48;
+      y += cardHeight + 6;
     });
-    y += 4;
+    y += 2;
   };
 
   const statusColor = (status?: string) => {
@@ -231,15 +232,15 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
 
   // Tech & Location cards side by side
   const half = (contentWidth - 12) / 2;
-  ensureSpace(100);
+  ensureSpace(70);
   const currentY = y;
-  drawCard(margin, half, 'Technician', [`${visit.technician_name || '—'}`, visit.technician_email || '—'], 70);
+  drawCard(margin, half, 'Technician', [`${visit.technician_name || '—'}`, visit.technician_email || '—'], 50);
   y = currentY;
-  drawCard(margin + half + 12, half, 'Location', visit.location || 'Not specified', 70);
+  drawCard(margin + half + 12, half, 'Location', visit.location || 'Not specified', 50);
   y += 4;
 
   // Started / Completed / Duration
-  const timeCardHeight = 70;
+  const timeCardHeight = 50;
   ensureSpace(timeCardHeight + 12);
   const yTime = y;
   drawCard(
@@ -261,7 +262,7 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
 
   // Recommendations / Work performed / Parts
   addSectionTitle('Recommendations');
-  drawCard(margin, contentWidth, 'Recommendations', visit.recommendations || 'No recommendations provided', 70);
+  drawCard(margin, contentWidth, 'Recommendations', visit.recommendations || 'No recommendations provided', 50);
 
   addSectionTitle('Work Performed');
   drawCard(
@@ -269,7 +270,7 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
     contentWidth,
     'Technician Report',
     visit.work_performed || visit.recommendations || visit.findings || 'No report provided',
-    70
+    50
   );
 
   addSectionTitle('Parts Used');
@@ -280,9 +281,9 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
           part.cost ? ` • Cost: $${part.cost}` : ''
         }`
     );
-    drawCard(margin, contentWidth, 'Parts', partsLines, 70);
+    drawCard(margin, contentWidth, 'Parts', partsLines, 50);
   } else {
-    drawCard(margin, contentWidth, 'Parts', 'No parts used', 70);
+    drawCard(margin, contentWidth, 'Parts', 'No parts used', 50);
   }
 
   // Findings (parsed best-effort)
@@ -324,7 +325,7 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
   if (parsedFindings.length > 0) {
     addListBadges(parsedFindings, statusColor);
   } else {
-    drawCard(margin, contentWidth, 'Findings', 'No findings recorded', 60);
+    drawCard(margin, contentWidth, 'Findings', 'No findings recorded', 50);
   }
 
   // Inspection results
@@ -337,7 +338,7 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
     }));
     addListBadges(inspectionItems, statusColor);
   } else {
-    drawCard(margin, contentWidth, 'Inspection Results', 'No inspection data available', 60);
+    drawCard(margin, contentWidth, 'Inspection Results', 'No inspection data available', 50);
   }
 
   // Photos
@@ -427,7 +428,7 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
     const rows = Math.ceil((visit.photos.length || 1) / perRow);
     y += rows * (thumbSize + 50);
   } else {
-    drawCard(margin, contentWidth, 'Photos', 'No evidence photos or videos uploaded for this visit.', 60);
+    drawCard(margin, contentWidth, 'Photos', 'No evidence photos or videos uploaded for this visit.', 50);
   }
 
   // Footer
