@@ -665,6 +665,24 @@ export default function SubscriptionVisitsPage() {
   };
 
   const downloadReport = async (visit: Visit, inspections: any[]) => {
+    // Load evidence photos/videos for this visit
+    let photos: Array<{ id: string; photo_url: string; caption: string | null; category: string | null }> = [];
+    try {
+      const { data: photoRows, error: photoError } = await supabase
+        .from('visit_photos')
+        .select('*')
+        .eq('visit_id', visit.id)
+        .order('uploaded_at', { ascending: true });
+
+      if (!photoError && photoRows) {
+        photos = photoRows as any;
+      } else if (photoError) {
+        console.warn('Error loading visit photos for report:', photoError);
+      }
+    } catch (e) {
+      console.warn('Unexpected error loading visit photos for report:', e);
+    }
+
     const visitForPdf: VisitForPdf = {
       id: visit.id,
       visit_number: visit.visit_number,
@@ -684,7 +702,7 @@ export default function SubscriptionVisitsPage() {
       technician_name: (visit as any)?.technician?.full_name || 'Technician',
       technician_email: (visit as any)?.technician?.email || '',
       inspections: inspections || (visit as any).inspections || [],
-      photos: (visit as any).photos || []
+      photos: photos as any
     };
 
     const fileName = `visit-${visit.visit_number}-report-${Date.now()}.pdf`;
