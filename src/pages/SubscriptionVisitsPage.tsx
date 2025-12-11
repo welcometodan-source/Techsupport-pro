@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { generateVisitReportPdf, VisitForPdf } from '../utils/visitReportPdf';
 import {
   Calendar,
   Clock,
@@ -664,139 +665,32 @@ export default function SubscriptionVisitsPage() {
   };
 
   const downloadReport = async (visit: Visit, inspections: any[]) => {
-    let content = `VISIT REPORT - Visit #${visit.visit_number}\n`;
-    content += `${'='.repeat(50)}\n\n`;
+    const visitForPdf: VisitForPdf = {
+      id: visit.id,
+      visit_number: visit.visit_number,
+      scheduled_date: visit.scheduled_date,
+      started_at: visit.started_at,
+      completed_at: visit.completed_at,
+      confirmed_at: visit.confirmed_at,
+      status: visit.status,
+      findings: visit.findings,
+      recommendations: visit.recommendations,
+      work_performed: visit.work_performed,
+      location: visit.location,
+      duration_minutes: visit.duration_minutes,
+      parts_used: (visit as any).parts_used || [],
+      customer_name: (visit as any)?.subscription?.user?.full_name || null,
+      customer_email: (visit as any)?.subscription?.user?.email || null,
+      technician_name: (visit as any)?.technician?.full_name || 'Technician',
+      technician_email: (visit as any)?.technician?.email || '',
+      inspections: inspections || (visit as any).inspections || [],
+      photos: (visit as any).photos || []
+    };
 
-    content += `Status: ${visit.status.replace('_', ' ').toUpperCase()}\n`;
-    if (visit.scheduled_date) content += `Scheduled: ${new Date(visit.scheduled_date).toLocaleDateString()}\n`;
-    if (visit.started_at) content += `Started: ${new Date(visit.started_at).toLocaleString()}\n`;
-    if (visit.completed_at) content += `Completed: ${new Date(visit.completed_at).toLocaleString()}\n`;
-    if (visit.confirmed_at) content += `Confirmed: ${new Date(visit.confirmed_at).toLocaleString()}\n`;
-    if (visit.duration_minutes) content += `Duration: ${visit.duration_minutes} minutes\n`;
-    if (visit.location) content += `Location: ${visit.location}\n`;
-
-    content += `\n${'='.repeat(50)}\n\n`;
-
-    if (visit.findings) {
-      content += `FINDINGS:\n${visit.findings}\n\n`;
-    }
-
-    if (visit.work_performed) {
-      content += `WORK PERFORMED:\n${visit.work_performed}\n\n`;
-    }
-
-    if (visit.recommendations) {
-      content += `RECOMMENDATIONS:\n${visit.recommendations}\n\n`;
-    }
-
-    if (inspections && inspections.length > 0) {
-      content += `${'='.repeat(50)}\n`;
-      content += `DETAILED INSPECTION CHECKLIST\n`;
-      content += `${'='.repeat(50)}\n\n`;
-
-      inspections.forEach((inspection: any, index: number) => {
-        const componentName = inspection.item || inspection.category || inspection.component || `Component ${index + 1}`;
-        content += `${index + 1}. ${componentName} - ${inspection.status.replace('_', ' ').toUpperCase()}`;
-        if (inspection.notes) content += ` (Notes: ${inspection.notes})`;
-        content += '\n';
-      });
-    }
-
-    const fileName = `visit-${visit.visit_number}-report-${Date.now()}.txt`;
+    const fileName = `visit-${visit.visit_number}-report-${Date.now()}.pdf`;
 
     try {
-      // Detect if we're on mobile device
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const anyWindow = window as any;
-      const isNative = !!anyWindow?.Capacitor?.isNativePlatform;
-
-      // For mobile devices, use a more reliable approach
-      if (isMobile || isNative) {
-        // Method 1: Open in new window with data URL (most reliable for mobile)
-        const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
-        const newWindow = window.open(dataUrl, '_blank');
-        
-        if (newWindow) {
-          // Wait a moment then try to trigger download
-          setTimeout(() => {
-            try {
-              // Try to create download link in the new window
-              const downloadLink = newWindow.document.createElement('a');
-              downloadLink.href = dataUrl;
-              downloadLink.download = fileName;
-              downloadLink.style.display = 'none';
-              newWindow.document.body.appendChild(downloadLink);
-              downloadLink.click();
-              newWindow.document.body.removeChild(downloadLink);
-            } catch (e) {
-              // If that fails, at least the window is open with the content
-              console.log('Download trigger failed, but content is visible');
-            }
-          }, 500);
-        } else {
-          // Popup blocked - show modal with copy option
-          const modal = document.createElement('div');
-          modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
-          modal.innerHTML = `
-            <div style="background:white;border-radius:10px;padding:20px;max-width:90%;max-height:80%;overflow:auto;">
-              <h3 style="margin-top:0;">Visit Report</h3>
-              <textarea readonly style="width:100%;height:300px;font-family:monospace;padding:10px;border:1px solid #ccc;border-radius:5px;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-              <div style="margin-top:15px;display:flex;gap:10px;">
-                <button id="copyBtn" style="flex:1;padding:10px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;">Copy to Clipboard</button>
-                <button id="closeBtn" style="flex:1;padding:10px;background:#6c757d;color:white;border:none;border-radius:5px;cursor:pointer;">Close</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modal);
-          
-          modal.querySelector('#copyBtn')?.addEventListener('click', async () => {
-            try {
-              await navigator.clipboard.writeText(content);
-              alert('Report copied to clipboard!');
-              document.body.removeChild(modal);
-            } catch (e) {
-              alert('Could not copy to clipboard. Please select and copy the text manually.');
-            }
-          });
-          
-          modal.querySelector('#closeBtn')?.addEventListener('click', () => {
-            document.body.removeChild(modal);
-          });
-        }
-
-        // Method 2: Try Capacitor Share as additional option
-        if (isNative) {
-          try {
-            // @ts-ignore - Capacitor plugin may not be installed
-            const shareModule = '@capacitor/share';
-            const capacitorShare = await import(/* @vite-ignore */ shareModule);
-            const { Share } = capacitorShare as any;
-            
-            // Share the text content
-            await Share.share({
-              title: 'Visit Report',
-              text: content
-            });
-          } catch (e) {
-            // Share not available, that's okay - we already opened the window
-            console.log('Capacitor Share not available');
-          }
-        }
-      } else {
-        // Desktop browser - use standard download
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
-      }
+      await generateVisitReportPdf(visitForPdf, fileName);
     } catch (error) {
       console.error('Error generating visit report for download:', error);
       alert('Unable to download report. Please try again or contact support.');
