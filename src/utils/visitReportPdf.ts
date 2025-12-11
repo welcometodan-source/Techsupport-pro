@@ -295,11 +295,25 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
       .forEach(line => {
         const [systemPart, neededPart] = line.split(' - Needed:').map(part => part?.trim());
         let status: string | undefined;
-        if (systemPart.toLowerCase().includes('urgent attention')) status = 'URGENT ATTENTION';
-        else if (systemPart.toLowerCase().includes('needs attention')) status = 'NEEDS ATTENTION';
-        else if (systemPart.toLowerCase().includes('pass')) status = 'PASS';
+        let cleanTitle = systemPart.replace('System:', 'System').trim();
+        
+        // Detect and remove status from title
+        if (systemPart.toLowerCase().includes('urgent attention')) {
+          status = 'URGENT ATTENTION';
+          cleanTitle = cleanTitle.replace(/urgent attention/gi, '').trim();
+        } else if (systemPart.toLowerCase().includes('needs attention')) {
+          status = 'NEEDS ATTENTION';
+          cleanTitle = cleanTitle.replace(/needs attention/gi, '').trim();
+        } else if (systemPart.toLowerCase().includes('pass')) {
+          status = 'PASS';
+          cleanTitle = cleanTitle.replace(/\bpass\b/gi, '').trim();
+        }
+        
+        // Clean up any extra spaces or "System System" duplicates
+        cleanTitle = cleanTitle.replace(/\s+/g, ' ').replace(/System System/gi, 'System').trim();
+        
         parsedFindings.push({
-          title: systemPart.replace('System:', 'System').trim(),
+          title: cleanTitle,
           subtitle: neededPart ? `Needed: ${neededPart}` : undefined,
           status
         });
@@ -373,15 +387,27 @@ async function buildVisitReportDoc(visit: VisitForPdf) {
             
             doc.addImage(dataUrl, format, x + 4, rowY + 4, thumbSize - 8, thumbSize - 8);
           } catch (imgError) {
-            console.warn('Error adding image to PDF:', imgError);
+            console.warn('Error adding image to PDF:', imgError, photo.photo_url);
             // Draw placeholder on error
             doc.setFillColor(theme.panel);
             doc.roundedRect(x + 4, rowY + 4, thumbSize - 8, thumbSize - 8, 4, 4, 'F');
+            doc.setTextColor(theme.muted);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            const errorText = 'Image';
+            const textWidth = doc.getTextWidth(errorText);
+            doc.text(errorText, x + (thumbSize - textWidth) / 2, rowY + thumbSize / 2);
           }
         } else {
           // Draw placeholder if image failed to load
           doc.setFillColor(theme.panel);
           doc.roundedRect(x + 4, rowY + 4, thumbSize - 8, thumbSize - 8, 4, 4, 'F');
+          doc.setTextColor(theme.muted);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          const errorText = 'Image';
+          const textWidth = doc.getTextWidth(errorText);
+          doc.text(errorText, x + (thumbSize - textWidth) / 2, rowY + thumbSize / 2);
         }
       }
 
