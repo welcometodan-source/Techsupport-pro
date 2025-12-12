@@ -665,53 +665,59 @@ export default function SubscriptionVisitsPage() {
   };
 
   const downloadReport = async (visit: Visit, inspections: any[]) => {
-    // Load evidence photos/videos for this visit
-    let photos: Array<{ id: string; photo_url: string; caption: string | null; category: string | null }> = [];
     try {
-      const { data: photoRows, error: photoError } = await supabase
-        .from('visit_photos')
-        .select('*')
-        .eq('visit_id', visit.id)
-        .order('uploaded_at', { ascending: true });
+      console.log('Download report clicked for visit:', visit.id);
+      
+      // Load evidence photos/videos for this visit
+      let photos: Array<{ id: string; photo_url: string; caption: string | null; category: string | null }> = [];
+      try {
+        const { data: photoRows, error: photoError } = await supabase
+          .from('visit_photos')
+          .select('*')
+          .eq('visit_id', visit.id)
+          .order('uploaded_at', { ascending: true });
 
-      if (!photoError && photoRows) {
-        photos = photoRows as any;
-      } else if (photoError) {
-        console.warn('Error loading visit photos for report:', photoError);
+        if (!photoError && photoRows) {
+          photos = photoRows as any;
+          console.log('Loaded photos for PDF:', photos.length);
+        } else if (photoError) {
+          console.warn('Error loading visit photos for report:', photoError);
+        }
+      } catch (e) {
+        console.warn('Unexpected error loading visit photos for report:', e);
       }
-    } catch (e) {
-      console.warn('Unexpected error loading visit photos for report:', e);
-    }
 
-    const visitForPdf: VisitForPdf = {
-      id: visit.id,
-      visit_number: visit.visit_number,
-      scheduled_date: visit.scheduled_date,
-      started_at: visit.started_at,
-      completed_at: visit.completed_at,
-      confirmed_at: visit.confirmed_at,
-      status: visit.status,
-      findings: visit.findings,
-      recommendations: visit.recommendations,
-      work_performed: visit.work_performed,
-      location: visit.location,
-      duration_minutes: visit.duration_minutes,
-      parts_used: (visit as any).parts_used || [],
-      customer_name: (visit as any)?.subscription?.user?.full_name || null,
-      customer_email: (visit as any)?.subscription?.user?.email || null,
-      technician_name: (visit as any)?.technician?.full_name || 'Technician',
-      technician_email: (visit as any)?.technician?.email || '',
-      inspections: inspections || (visit as any).inspections || [],
-      photos: photos as any
-    };
+      const visitForPdf: VisitForPdf = {
+        id: visit.id,
+        visit_number: visit.visit_number,
+        scheduled_date: visit.scheduled_date,
+        started_at: visit.started_at,
+        completed_at: visit.completed_at,
+        confirmed_at: (visit as any).confirmed_at || null,
+        status: visit.status,
+        findings: visit.findings,
+        recommendations: visit.recommendations,
+        work_performed: visit.work_performed,
+        location: visit.location,
+        duration_minutes: visit.duration_minutes,
+        parts_used: (visit as any).parts_used || [],
+        customer_name: (visit as any)?.subscription?.user?.full_name || null,
+        customer_email: (visit as any)?.subscription?.user?.email || null,
+        technician_name: (visit as any)?.technician?.full_name || 'Technician',
+        technician_email: (visit as any)?.technician?.email || '',
+        inspections: inspections || (visit as any).inspections || [],
+        photos: photos as any
+      };
 
-    const fileName = `visit-${visit.visit_number}-report-${Date.now()}.pdf`;
+      console.log('Generating PDF with data:', visitForPdf);
+      const fileName = `visit-${visit.visit_number}-report-${Date.now()}.pdf`;
 
-    try {
       await generateVisitReportPdf(visitForPdf, fileName);
+      console.log('PDF generated successfully');
     } catch (error) {
       console.error('Error generating visit report for download:', error);
-      alert('Unable to download report. Please try again or contact support.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Unable to download report: ${errorMessage}. Please check the console for details.`);
     }
   };
 
@@ -1337,8 +1343,17 @@ export default function SubscriptionVisitsPage() {
 
                 <div className="mt-6 flex gap-3">
                   <button
-                    onClick={() => downloadReport(selectedVisit, visitInspections)}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-400 text-white rounded-xl hover:from-sky-600 hover:to-cyan-500 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/40"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!selectedVisit) {
+                        alert('No visit selected. Please select a visit first.');
+                        return;
+                      }
+                      downloadReport(selectedVisit, visitInspections);
+                    }}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-400 text-white rounded-xl hover:from-sky-600 hover:to-cyan-500 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!selectedVisit}
                   >
                     <Download className="w-5 h-5" />
                     Download Report
@@ -1598,8 +1613,17 @@ export default function SubscriptionVisitsPage() {
 
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => downloadReport(selectedVisit, visitInspections)}
-                  className="flex-1 px-4 py-2 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors flex items-center justify-center gap-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!selectedVisit) {
+                      alert('No visit selected. Please select a visit first.');
+                      return;
+                    }
+                    downloadReport(selectedVisit, visitInspections);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!selectedVisit}
                 >
                   <Download className="w-5 h-5" />
                   Download Report
